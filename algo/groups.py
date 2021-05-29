@@ -16,22 +16,28 @@ class Group:
         self.id = my_id
         self.last = childs is None
         if not self.last: self.childs = set(childs)
-        self.score = 0
+        #self.score = 0
 
     def is_child(self, group):
 
         return group.id in self.childs
 
-    def add_score(self, score:float, all_groups:List):
+    def set_subjects(self, subjects):
 
-        self.score += score
+        self.scores = {s:0 for s in subjects}
+
+
+    def add_score(self, scores, all_groups:List):
+
+        for key, score in scores.items():
+            self.scores[key] += score
 
         if not self.last:
             for group in all_groups:
 
                 if self.is_child(group):
 
-                    group.add_score(score, all_groups)
+                    group.add_score(scores, all_groups)
 
 
 
@@ -48,12 +54,15 @@ if __name__ == '__main__':
 
     all_groups = [g1,g2,g3,g4,g5,g6]
 
-    g1.add_score(10, all_groups)
-    g4.add_score(1, all_groups)
+    for g in all_groups:
+        g.set_subjects(['1', '2'])
 
-    g5.add_score(2, all_groups)
+    g1.add_score( {'1': 10}, all_groups)
+    g4.add_score({'1': 1}, all_groups)
 
-    print([g.score for g in all_groups])
+    g5.add_score({'1': 2}, all_groups)
+
+    print([g.scores for g in all_groups])
 
 
 

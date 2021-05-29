@@ -27,7 +27,7 @@ def get_all_combinations_df(result):
         pl = result['places2contain'][place]
         su = result['subjects2reqs'][subject]
 
-        return len(pl.intersection(su)) == max((len(pl), len(su)))
+        return su.issubset(pl) # место должно подходить под требование урока, но наоборот не обязательно
 
 
     teachers_subjects_places_groups = [(teacher, subject, place, group) for (teacher, subject), (place, group) in teachers_subjects_places_groups if connect(place, subject)]
@@ -63,7 +63,9 @@ def get_ways_for_timeslots(result):
 
 
 
-
+if __name__ == '__main__':
+    
+    all_combs, slots = get_ways_for_timeslots(result)
 
 
 
