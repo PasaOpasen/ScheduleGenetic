@@ -55,10 +55,10 @@ if __name__ == '__main__':
     all_groups = [g1,g2,g3,g4,g5,g6]
 
     for g in all_groups:
-        g.set_subjects(['1', '2'])
+        g.set_subjects(['1', '2', 4])
 
     g1.add_score( {'1': 10}, all_groups)
-    g4.add_score({'1': 1}, all_groups)
+    g4.add_score({'1': 1, 4: 2}, all_groups)
 
     g5.add_score({'1': 2}, all_groups)
 

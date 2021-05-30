@@ -4,12 +4,15 @@ import numpy as np
 import pandas as pd
 
 
-from groups import Group
+from .groups import Group
 
 #import sys, os
 #sys.path.append(os.path.dirname(file))
 
 def df_exceptions_dict(df):
+    """
+    переводит таблицу в словарь из запретов -- у каждого объекта запрещаются свои слоты
+    """
     
     answer = {}
     indexes = np.arange(1, df.shape[1])
@@ -18,6 +21,34 @@ def df_exceptions_dict(df):
         answer[df.iloc[i,0]] = indexes[df.values[i,1:] == 0]
     
     return {key: list(val) for key, val in answer.items()}
+
+
+def df_to_better_view(df):
+    """
+    меняет значения ячеек таблицы на более симпатичные
+    """
+    df = df.astype(str)
+    df[df == '0.0'] = 'нельзя использовать'
+    df[df == '0'] = 'нельзя использовать'
+    df[df == '-1.0'] = ''
+    df[df == '-1'] = ''
+
+    return df
+
+
+
+
+
+
+
+
+def read_slots_table(file_name = '../data/Diss.xlsx'):
+    
+    df = pd.read_excel(file_name, sheet_name = 'Timeslots').iloc[1:,:]
+    
+    df.columns = df.iloc[0, :]
+    
+    return df.iloc[1:, :]
 
 
 
@@ -110,14 +141,10 @@ def read_all_data(file_name = '../data/Diss.xlsx'):
 
     answer = {}
 
-    answer['teacher_schedule'] = read_teachers_schedule(file_name)
-    answer['teacher_exceptions'] = df_exceptions_dict(answer['teacher_schedule'])
-
-    answer['places_schedule'] = read_places_schedule(file_name)
-    answer['places_exceptions'] = df_exceptions_dict(answer['places_schedule'])
-
-    answer['groups_schedule'] = read_groups_schedule(file_name)
-    answer['groups_exceptions'] = df_exceptions_dict(answer['groups_schedule'])
+    for name, reader in zip(('teacher', 'places', 'groups'), (read_teachers_schedule, read_places_schedule, read_groups_schedule)):
+        answer[f'{name}_schedule'] = reader(file_name)
+        answer[f'{name}_exceptions'] = df_exceptions_dict(answer[f'{name}_schedule'])
+        answer[f'{name}_schedule'] = df_to_better_view(answer[f'{name}_schedule'])
 
     answer['teachers'] = read_teachers(file_name)
 
@@ -126,6 +153,10 @@ def read_all_data(file_name = '../data/Diss.xlsx'):
     answer['subjects2reqs'], answer['subjects2diffc'], answer['subjects2hours'] = read_subjects(file_name)
 
     answer['groups2names'], answer['groups2counts'], answer['all_groups'] = read_groups(file_name)
+
+
+    answer['table_slots'] = read_slots_table(file_name)
+
 
     return answer
 

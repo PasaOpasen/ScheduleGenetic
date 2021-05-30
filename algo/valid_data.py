@@ -59,7 +59,7 @@ def get_ways_for_timeslots(result):
 
         slots[slot] = all_rows[~(all_combs['teacher'].isin(teacher_ex) | all_combs['place'].isin(place_ex) | all_combs['group'].isin(group_ex))]
     
-    return all_combs, slots
+    return all_combs, {s: np.concatenate([np.full(5, -1), arr]) for s, arr in slots.items()} # добавляю таким образом возможность ничего не ставить в слоте, пустая пара
 
 
 
