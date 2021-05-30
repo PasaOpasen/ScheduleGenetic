@@ -42,6 +42,8 @@ def get_ways_for_timeslots(result):
 
     all_combs = get_all_combinations_df(result)
 
+    # all_combs = all_combs[all_combs['group'] < 4]
+
     slots = dict.fromkeys(range(1, result['teacher_schedule'].shape[1]))
 
     all_rows = np.arange(all_combs.shape[0])

@@ -33,11 +33,11 @@ class Group:
             self.scores[key] += score
 
         if not self.last:
-            for group in all_groups:
+            for i in range(len(all_groups)):
 
-                if self.is_child(group):
+                if self.is_child(all_groups[i]):
 
-                    group.add_score(scores, all_groups)
+                    all_groups[i].add_score(scores, all_groups)
 
 
 

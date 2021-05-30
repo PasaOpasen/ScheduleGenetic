@@ -132,13 +132,38 @@ class Optimizator:
 
 
 
-        available_values = [np.arange(arr[0], arr[1]+1) for arr in self.bounds] #[self.slots[i+1] for i in range(42)]
+        # available_values = [np.arange(arr[0], arr[1]+1) for arr in self.bounds] #[self.slots[i+1] for i in range(42)]
 
-        my_local_optimizer = lambda arr, score: Hill_Climbing_descent(function = func, 
-            available_predictors_values=available_values, 
-            random_counts_by_predictors = 200,
-            max_function_evals = 500, 
-            start_solution=arr )
+        # arr = np.array([np.random.choice(r) for r in available_values])
+        # exists = True
+        # best = 100_000
+        # while exists:
+        #     exists = False
+            
+
+        #     for i in np.random.choice(np.arange(arr.size), arr.size, replace=False):
+
+        #         alls = np.array([arr]*available_values[i].size)
+        #         alls[:,i] = available_values[i]
+
+        #         tots = np.array([func(r) for r in alls])
+
+        #         am = np.argmin(tots)
+        #         print(tots[am])
+        #         arr[i] = available_values[i][am]
+            
+        #     if func(arr) < best:
+        #         best = func(arr)
+        #         exists = True
+
+
+
+
+        # my_local_optimizer = lambda arr, score: Hill_Climbing_descent(function = func, 
+        #     available_predictors_values=available_values, 
+        #     random_counts_by_predictors = 200,
+        #     max_function_evals = 500, 
+        #     start_solution=arr )
 
 
         
