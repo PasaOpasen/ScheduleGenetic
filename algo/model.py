@@ -16,6 +16,11 @@ def difficult2score(value):
     if value > 20: return 10*(value-20) + value
     return value
 
+# перевод числа часов в метрику
+def count2score(target, current):
+    return ((target-current)**2)*100
+    
+
 
 class Optimizator:
 
@@ -84,7 +89,7 @@ class Optimizator:
                     if type(key) == int:
                         total += difficult2score(val)
                     else:
-                        total += abs(subjects2hours[key]-val)*100
+                        total += count2score(subjects2hours[key], val)
             
             return total
 
@@ -293,7 +298,7 @@ class Optimizator:
                 if type(key) == int:
                     counts.append((name, key, val, difficult2score(val))) # сложности
                 else:
-                    difficults.append((name, key, val, subjects2hours[key], abs(subjects2hours[key]-val)*100)) # число часов 
+                    difficults.append((name, key, val, subjects2hours[key], count2score(subjects2hours[key], val))) # число часов 
 
 
         pd.DataFrame(counts, columns = ['Группа', 'День', 'Сложность', 'Штраф']).to_excel(writer, sheet_name = 'Сложности', index = False, startrow=5, startcol=2)
