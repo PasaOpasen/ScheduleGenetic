@@ -7,6 +7,8 @@ import pandas as pd
 
 from geneticalgorithm2 import geneticalgorithm2 as ga
 from geneticalgorithm2 import Population_initializer # for creating better start population
+from geneticalgorithm2 import Actions, ActionConditions, MiddleCallbacks
+from geneticalgorithm2 import plot_pop_scores # for plotting scores without ga object
 
 from DiscreteHillClimbing import Hill_Climbing_descent
 
@@ -59,7 +61,7 @@ class Optimizator:
             vec = vector.astype(int)
             mask = vec >= 0
 
-            if mask.sum() == vec.size: return 100_000
+            if mask.sum() == 0: return 100_000
 
 
             df = needed_df[vec[mask],:]
@@ -109,7 +111,7 @@ class Optimizator:
 
 
 
-    def find_solution(self):
+    def find_solution(self, hash):
 
         func = lambda arr: self.eval(self.indexes2rows(arr))
 
@@ -119,63 +121,77 @@ class Optimizator:
                  variable_boundaries = self.bounds,
                  variable_type_mixed = None, 
                  function_timeout = 10,
-                 algorithm_parameters={'max_num_iteration': 1000,
-                                       'population_size':100,
+                 algorithm_parameters={'max_num_iteration': 5000,
+                                       'population_size':200,
                                        'mutation_probability':0.1,
                                        'elit_ratio': 0.05,
                                        'crossover_probability': 0.5,
-                                       'parents_portion': 0.3,
+                                       'parents_portion': 0.1,
                                        'crossover_type':'uniform',
                                        'selection_type': 'linear_ranking',
-                                       'max_iteration_without_improv':None}
+                                       'max_iteration_without_improv':400}
             )
 
 
 
-        # available_values = [np.arange(arr[0], arr[1]+1) for arr in self.bounds] #[self.slots[i+1] for i in range(42)]
+        available_values = [np.arange(arr[0], arr[1]+1) for arr in self.bounds] #[self.slots[i+1] for i in range(42)]
 
-        # arr = np.array([np.random.choice(r) for r in available_values])
-        # exists = True
-        # best = 100_000
-        # while exists:
-        #     exists = False
+        def local_opt(arr = None, best = 100_000):
+            if arr is None:
+                arr = np.array([np.random.choice(r) for r in available_values])
             
+            exists = True
+            best = 100_000
+            while exists:
+                exists = False
+                
 
-        #     for i in np.random.choice(np.arange(arr.size), arr.size, replace=False):
+                for i in np.random.choice(np.arange(arr.size), arr.size, replace=False):
 
-        #         alls = np.array([arr]*available_values[i].size)
-        #         alls[:,i] = available_values[i]
+                    alls = np.array([arr]*available_values[i].size)
+                    alls[:,i] = available_values[i]
 
-        #         tots = np.array([func(r) for r in alls])
+                    tots = np.array([func(r) for r in alls])
 
-        #         am = np.argmin(tots)
-        #         print(tots[am])
-        #         arr[i] = available_values[i][am]
+                    am = np.argmin(tots)
+                    # print(tots[am])
+                    arr[i] = available_values[i][am]
+                
+                if func(arr) < best:
+                    best = func(arr)
+                    exists = True
             
-        #     if func(arr) < best:
-        #         best = func(arr)
-        #         exists = True
+            return arr, best
 
 
 
 
-        # my_local_optimizer = lambda arr, score: Hill_Climbing_descent(function = func, 
-        #     available_predictors_values=available_values, 
-        #     random_counts_by_predictors = 200,
-        #     max_function_evals = 500, 
-        #     start_solution=arr )
+        my_local_optimizer = lambda arr, score: Hill_Climbing_descent(function = func, 
+            available_predictors_values=available_values, 
+            random_counts_by_predictors = 10,
+            max_function_evals = 50, 
+            start_solution=arr )
+
+        def local_opt_callback(data):
+
+            if data['current_stagnation'] > 25:
+                g = data['last_generation']
+
+                for i in range(50):
+                    g['variables'][i], g['scores'][i] = my_local_optimizer(g['variables'][i], g['scores'][i])
+                
+                data['last_generation'] = g
+            return data
 
 
-        
+        print('--------------> First GA descent')
         model.run(
             no_plot = False, 
             disable_progress_bar = False,
             disable_printing = False,
 
-            set_function = None, 
-            apply_function_to_parents = False, 
             start_generation = {'variables':None, 'scores': None},
-            studEA = True,
+            studEA = False,
             mutation_indexes = None,
 
             init_creator = None,
@@ -187,15 +203,80 @@ class Optimizator:
             revolution_after_stagnation_step = None,
             revolution_part = 0.3,
             
-            #population_initializer = Population_initializer(select_best_of = 10, local_optimization_step = 'after_select', local_optimizer = my_local_optimizer),
+            population_initializer = Population_initializer(select_best_of = 10, local_optimization_step = 'never', local_optimizer = None),
             
             stop_when_reached = None,
             callbacks = [],
-            middle_callbacks = [],
+                middle_callbacks = [
+        MiddleCallbacks.UniversalCallback(local_opt_callback, ActionConditions.EachGen(50))
+        ],
             time_limit_secs = None, 
             save_last_generation_as = None,
             seed = None
             )
+
+
+        model.plot_results(save_as = f'{hash}_first_GA.png')
+        plot_pop_scores(model.output_dict['last_generation']['scores'], title = 'Population scores after first GA descent', save_as= f'{hash}_pop_after_GA.png')
+
+
+        gen = model.output_dict['last_generation']
+
+        dt = np.hstack((gen['variables'], gen['scores'].reshape(-1,1)))
+        dt = np.unique(dt, axis = 0)
+        args = np.argsort(dt[:,-1])
+        gen['variables'], gen['scores'] = dt[args,:-1], dt[args,-1]
+
+        plot_pop_scores(gen['scores'], title = 'Population scores after duplicates removing', save_as= f'{hash}_pop_after_remove_dups.png')
+
+        best_val = gen['scores'].min()
+
+        print(f"--------------> Hill Climbing part:")
+
+        for i in range(5):
+            
+            t = gen['scores'][i]
+            gen['variables'][i], gen['scores'][i] = local_opt(gen['variables'][i], gen['scores'][i])
+
+            print(f"---> {t} prevoius score goes to {gen['scores'][i]}")
+
+
+
+        if best_val > gen['scores'][:10].min():
+            
+            plot_pop_scores(gen['scores'], title = 'Population scores after hill climning', save_as= f'{hash}_pop_after_HC.png')
+            
+            print('--------------> Second GA descent')
+            model.run(
+                no_plot = False, 
+                disable_progress_bar = False,
+                disable_printing = False,
+
+                start_generation = gen,
+                studEA = True,
+                mutation_indexes = None,
+
+                init_creator = None,
+                init_oppositors = None,
+                duplicates_oppositor = None,
+                remove_duplicates_generation_step = None,
+
+                revolution_oppositor = None,
+                revolution_after_stagnation_step = None,
+                revolution_part = 0.3,
+                
+                stop_when_reached = None,
+                callbacks = [],
+                middle_callbacks = [],
+                time_limit_secs = None, 
+                save_last_generation_as = None,
+                seed = None
+                )    
+            
+            model.plot_results(save_as = f'{hash}_second_GA.png')
+
+
+
 
 
         self.model = model
@@ -211,7 +292,9 @@ class Optimizator:
 
 
 
-    def save_results(self, file_name = 'output.xlsx'):
+    def save_results(self, file_name = None):
+
+        file_name = f'output_{int(self.model.output_dict["function"])}.xlsx' if file_name is None else file_name
 
         writer = pd.ExcelWriter(file_name, engine='xlsxwriter')
 
