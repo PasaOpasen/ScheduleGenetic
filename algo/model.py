@@ -1,5 +1,6 @@
 
 
+from matplotlib.pyplot import savefig
 import numpy as np
 import pandas as pd
 
@@ -124,7 +125,7 @@ class Optimizator:
                  algorithm_parameters={'max_num_iteration': 5000,
                                        'population_size':200,
                                        'mutation_probability':0.1,
-                                       'elit_ratio': 0.05,
+                                       'elit_ratio': 0.001,
                                        'crossover_probability': 0.5,
                                        'parents_portion': 0.1,
                                        'crossover_type':'uniform',
@@ -141,7 +142,7 @@ class Optimizator:
                 arr = np.array([np.random.choice(r) for r in available_values])
             
             exists = True
-            best = 100_000
+
             while exists:
                 exists = False
                 
@@ -170,7 +171,7 @@ class Optimizator:
             available_predictors_values=available_values, 
             random_counts_by_predictors = 10,
             max_function_evals = 50, 
-            start_solution=arr )
+            start_solution=arr, seed = hash )
 
         def local_opt_callback(data):
 
@@ -182,6 +183,23 @@ class Optimizator:
                 
                 data['last_generation'] = g
             return data
+
+
+        counter = 0
+        def plot_for_gif(scores, title, save_as):
+            nonlocal counter
+            counter += 1
+            plot_pop_scores(scores, title = title, save_as= f'{counter}_{save_as}')
+            #plot_pop_scores(scores, title = title, save_as= f'./for_gif/{counter}_{save_as}')
+
+        def local_plot_callback(data):
+            g = data['last_generation']['scores']
+
+            #plot_for_gif(g, title = f"Generation {data['current_generation']}", save_as = '.png')
+
+            return data
+
+
 
 
         print('--------------> First GA descent')
@@ -208,17 +226,21 @@ class Optimizator:
             stop_when_reached = None,
             callbacks = [],
                 middle_callbacks = [
-        MiddleCallbacks.UniversalCallback(local_opt_callback, ActionConditions.EachGen(50))
+        MiddleCallbacks.UniversalCallback(local_opt_callback, ActionConditions.EachGen(50)),
+        MiddleCallbacks.UniversalCallback(local_plot_callback, ActionConditions.EachGen(1))
         ],
             time_limit_secs = None, 
             save_last_generation_as = None,
-            seed = None
+            seed = hash
             )
 
 
         model.plot_results(save_as = f'{hash}_first_GA.png')
-        plot_pop_scores(model.output_dict['last_generation']['scores'], title = 'Population scores after first GA descent', save_as= f'{hash}_pop_after_GA.png')
+        plot_for_gif(model.output_dict['last_generation']['scores'], title = 'Population scores after first GA descent', save_as= f'{hash}_pop_after_GA.png')
 
+
+
+        # удаление дубликатов
 
         gen = model.output_dict['last_generation']
 
@@ -227,12 +249,13 @@ class Optimizator:
         args = np.argsort(dt[:,-1])
         gen['variables'], gen['scores'] = dt[args,:-1], dt[args,-1]
 
-        plot_pop_scores(gen['scores'], title = 'Population scores after duplicates removing', save_as= f'{hash}_pop_after_remove_dups.png')
+        plot_for_gif(gen['scores'], title = 'Population scores after duplicates removing', save_as= f'{hash}_pop_after_remove_dups.png')
 
         best_val = gen['scores'].min()
 
         print(f"--------------> Hill Climbing part:")
-
+        
+        # восхождение по холму
         for i in range(5):
             
             t = gen['scores'][i]
@@ -241,10 +264,10 @@ class Optimizator:
             print(f"---> {t} prevoius score goes to {gen['scores'][i]}")
 
 
-
+        # второй раз GA
         if best_val > gen['scores'][:10].min():
             
-            plot_pop_scores(gen['scores'], title = 'Population scores after hill climning', save_as= f'{hash}_pop_after_HC.png')
+            plot_for_gif(gen['scores'], title = 'Population scores after hill climning', save_as= f'{hash}_pop_after_HC.png')
             
             print('--------------> Second GA descent')
             model.run(
@@ -267,10 +290,13 @@ class Optimizator:
                 
                 stop_when_reached = None,
                 callbacks = [],
-                middle_callbacks = [],
+                
+                middle_callbacks = [
+        MiddleCallbacks.UniversalCallback(local_plot_callback, ActionConditions.EachGen(1))
+        ],
                 time_limit_secs = None, 
                 save_last_generation_as = None,
-                seed = None
+                seed = hash
                 )    
             
             model.plot_results(save_as = f'{hash}_second_GA.png')
